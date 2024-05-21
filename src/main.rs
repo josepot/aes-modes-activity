@@ -15,6 +15,7 @@ use aes::{
     cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
 };
+use rand::Rng;
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
@@ -146,8 +147,24 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// is inserted as the first block of ciphertext.
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random initialization vector for the first block.
+    let mut iv = [0u8; 16].map(|_| rand::thread_rng().gen_range(0..=255u8));
 
-    todo!()
+    let padded_group = group(pad(plain_text));
+    let mut encrypted_group = vec![];
+    encrypted_group.push(iv);
+
+    for i in 0..padded_group.len() {
+        let chunk = padded_group[i];
+        let mut idx = 0;
+        let xor_chunk = chunk.map(|v| {
+            idx += 1;
+            v ^ iv[idx - 1]
+        });
+        encrypted_group.push(aes_encrypt(xor_chunk, &key));
+        iv = encrypted_group[i + 1].clone();
+    }
+
+    un_group(encrypted_group)
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {

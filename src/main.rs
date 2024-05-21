@@ -95,13 +95,13 @@ fn group(data: Vec<u8>) -> Vec<[u8; BLOCK_SIZE]> {
 
 /// Does the opposite of the group function
 fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
-    blocks.iter().flat_map(|d| d.iter().cloned()).collect()
+    blocks.into_iter().flatten().collect()
 }
 
 /// Does the opposite of the pad function.
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
     let mut result = data.clone();
-    let n_bytes = usize::from(data.last().unwrap().clone());
+    let n_bytes = data.last().unwrap().clone() as usize;
     result.truncate(n_bytes);
     result
 }

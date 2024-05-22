@@ -15,10 +15,12 @@ use aes::{
     cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
 };
-use rand::Rng;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
+const SEED: [u8; 32] = [5; 32];
 
 fn main() {
     todo!("Maybe this should be a library crate. TBD");
@@ -147,7 +149,7 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// is inserted as the first block of ciphertext.
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random initialization vector for the first block.
-    let mut iv = [0u8; 16].map(|_| rand::thread_rng().gen_range(0..=255u8));
+    let mut iv: [u8; BLOCK_SIZE] = StdRng::from_seed(SEED).gen();
 
     let padded_group = group(pad(plain_text));
     let mut encrypted_group = vec![];
@@ -168,7 +170,24 @@ fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+    let mut iv: [u8; BLOCK_SIZE] = StdRng::from_seed(SEED).gen();
+
+    let grouped = group(cipher_text);
+    let mut decrypted_group = vec![];
+
+    for i in 1..grouped.len() {
+        let chunk = grouped[i];
+        let mut idx = 0;
+        let decrypted_chunk = aes_decrypt(chunk, &key);
+        let xor_chunk = decrypted_chunk.map(|v| {
+            idx += 1;
+            v ^ iv[idx - 1]
+        });
+        decrypted_group.push(xor_chunk);
+        iv = grouped[i].clone();
+    }
+
+    un_pad(un_group(decrypted_group))
 }
 
 /// Another mode which you can implement on your own is counter mode.

@@ -116,7 +116,7 @@ fn un_pad(data: Vec<u8>) -> Vec<u8> {
 /// large data. In this mode we simply encrypt each block of data under the same key.
 /// One good thing about this mode is that it is parallelizable. But to see why it is
 /// insecure look at: https://www.ubiqsecurity.com/wp-content/uploads/2022/02/ECB2.png
-fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; 16]) -> Vec<u8> {
+fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     un_group(
         group(pad(plain_text))
             .into_iter()
@@ -207,12 +207,40 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// Once again, you will need to generate a random nonce which is 64 bits long. This should be
 /// inserted as the first block of the ciphertext.
 fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    // Remember to generate a random nonce
-    todo!()
+    let plain_text = pad(plain_text);
+    let mut cipher_text = Vec::with_capacity(plain_text.len() + BLOCK_SIZE);
+    let nonce = rand::thread_rng().gen::<u64>();
+    cipher_text.extend(nonce.to_le_bytes());
+    (0..BLOCK_SIZE - 8).for_each(|_| cipher_text.push(0));
+    cipher_text.extend(ctr_transform(plain_text, key, nonce));
+    cipher_text
 }
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+    let nonce = u64::from_le_bytes(cipher_text[..8].try_into().unwrap());
+    let cipher_text = cipher_text[BLOCK_SIZE..].to_owned();
+    un_pad(ctr_transform(cipher_text, key, nonce))
+}
+
+fn ctr_transform(data: Vec<u8>, key: [u8; BLOCK_SIZE], nonce: u64) -> Vec<u8> {
+    let mut cipher_text = Vec::with_capacity(data.len());
+
+    for (counter, block) in group(data).into_iter().enumerate() {
+        let v = nonce
+            .to_le_bytes()
+            .into_iter()
+            .chain((counter as u64).to_le_bytes().into_iter())
+            .collect::<Vec<_>>();
+        cipher_text.extend(
+            ecb_encrypt(v, key.clone())
+                .iter()
+                .zip(block.iter())
+                .map(|(a, b)| a ^ b)
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    cipher_text
 }
 
 #[cfg(test)]

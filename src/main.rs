@@ -15,8 +15,7 @@ use aes::{
     cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
 };
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{Rng};
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;

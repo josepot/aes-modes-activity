@@ -15,7 +15,7 @@ use aes::{
     cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
 };
-use rand::{Rng};
+use rand::Rng;
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
@@ -170,21 +170,22 @@ fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     let grouped = group(cipher_text);
     let mut iv = grouped[0];
-    let mut decrypted_group = vec![];
 
-    for i in 1..grouped.len() {
-        let chunk = grouped[i];
-        let mut idx = 0;
-        let decrypted_chunk = aes_decrypt(chunk, &key);
-        let xor_chunk = decrypted_chunk.map(|v| {
-            idx += 1;
-            v ^ iv[idx - 1]
-        });
-        decrypted_group.push(xor_chunk);
-        iv = grouped[i].clone();
-    }
-
-    un_pad(un_group(decrypted_group))
+    un_pad(un_group(
+        grouped[1..]
+            .iter()
+            .cloned()
+            .map(|chunk| {
+                let mut idx = 0;
+                let result = aes_decrypt(chunk, &key).map(|v| {
+                    idx += 1;
+                    v ^ iv[idx - 1]
+                });
+                iv = chunk;
+                result
+            })
+            .collect(),
+    ))
 }
 
 /// Another mode which you can implement on your own is counter mode.

@@ -103,7 +103,7 @@ fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
     let mut result = data.clone();
     let n_bytes = data.last().unwrap().clone() as usize;
-    result.truncate(n_bytes);
+    result.truncate(result.len() - n_bytes);
     result
 }
 
@@ -194,4 +194,56 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     todo!()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_unpadding() {
+        let data = vec![1, 2, 3];
+        let padded = pad(data.clone());
+        assert_eq!(padded.len() % BLOCK_SIZE, 0);
+        assert_eq!(un_pad(padded), data);
+    }
+
+    #[test]
+    fn test_ungrouping() {
+        let data = vec![
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+        ];
+        let padded = pad(data.clone());
+        let grouped = group(padded.clone());
+        let ungrouped = un_group(grouped);
+        assert_eq!(ungrouped, padded);
+        assert_eq!(un_pad(ungrouped), data);
+    }
+
+    #[test]
+    fn test_ecb_encrypt_decrypt() {
+        let data = b"Hello, world! ECB!";
+        let key = [1u8; BLOCK_SIZE];
+        let encrypted = ecb_encrypt(data.to_vec(), key);
+        let decrypted = ecb_decrypt(encrypted, key);
+        assert_eq!(decrypted, data.to_vec());
+    }
+
+    #[test]
+    fn test_cbc_encrypt_decrypt() {
+        let data = b"Hello, world! CBC!";
+        let key = [1u8; BLOCK_SIZE];
+        let encrypted = cbc_encrypt(data.to_vec(), key);
+        let decrypted = cbc_decrypt(encrypted, key);
+        assert_eq!(decrypted, data.to_vec());
+    }
+
+    #[test]
+    fn test_ctr_encrypt_decrypt() {
+        let data = b"Hello, world! CTR!";
+        let key = [1u8; BLOCK_SIZE];
+        let encrypted = ctr_encrypt(data.to_vec(), key);
+        let decrypted = ctr_decrypt(encrypted, key);
+        assert_eq!(decrypted, data.to_vec());
+    }
 }

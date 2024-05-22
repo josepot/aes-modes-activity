@@ -20,7 +20,6 @@ use rand::{Rng, SeedableRng};
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
-const SEED: [u8; 32] = [5; 32];
 
 fn main() {
     todo!("Maybe this should be a library crate. TBD");
@@ -149,7 +148,7 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// is inserted as the first block of ciphertext.
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random initialization vector for the first block.
-    let mut iv: [u8; BLOCK_SIZE] = StdRng::from_seed(SEED).gen();
+    let mut iv = [0u8; 16].map(|_| rand::thread_rng().gen_range(0..=255u8));
 
     let padded_group = group(pad(plain_text));
     let mut encrypted_group = vec![];
@@ -170,9 +169,8 @@ fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    let mut iv: [u8; BLOCK_SIZE] = StdRng::from_seed(SEED).gen();
-
     let grouped = group(cipher_text);
+    let mut iv = grouped[0];
     let mut decrypted_group = vec![];
 
     for i in 1..grouped.len() {
